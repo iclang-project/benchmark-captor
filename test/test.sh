@@ -15,4 +15,4 @@ echo "CLANG:${CLANG}"
 export LD_LIBRARY_PATH=${LLVM_LIB_PATH}
 
 echo "captor ========== ========== ========== ========== =========="
-${CLANG} -fplugin=../cmake-build-release/libcaptor.so -fplugin-arg-captor-2 -c -o $1.o $1
+${CLANG} -fplugin=../cmake-build-release/libcaptor.so -fplugin-arg-captor-2 -fplugin-arg-captor-output.cpp -c -o $1.o $1

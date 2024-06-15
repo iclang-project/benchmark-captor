@@ -1,7 +1,8 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include <sstream>
+#include <fstream>
+#include <filesystem>
 
 #include "clang/Frontend/FrontendPluginRegistry.h"
 #include "clang/AST/ASTConsumer.h"
@@ -80,10 +81,11 @@ namespace {
     private:
         CompilerInstance &instance;
         int inputLine;
+        std::string outputPath;
 
     public:
-        explicit CaptorConsumer(CompilerInstance &_instance, int _inputLine)
-                : instance(_instance), inputLine(_inputLine) {}
+        explicit CaptorConsumer(CompilerInstance &_instance, int _inputLine, std::string _outputPath)
+                : instance(_instance), inputLine(_inputLine), outputPath(std::move(_outputPath)) {}
 
         void HandleTranslationUnit(ASTContext &context) override {
             CaptorVisitor visitor(instance, inputLine);
@@ -91,26 +93,39 @@ namespace {
 
             llvm::errs() << "outputFuncText:\n";
             llvm::errs() << visitor.outputFuncText;
+
+            std::ofstream ofs(outputPath);
+            if (!ofs.is_open()) {
+                llvm::errs() << "Can not open " << outputPath << "\n";
+                exit(1);
+            }
+            ofs << visitor.outputFuncText;
+            ofs.close();
         }
     };
 
     class CaptorAction : public PluginASTAction {
     protected:
         int inputLine = 0;
+        std::string outputPath;
 
         std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &instance,
                                                        llvm::StringRef) override {
-            return std::make_unique<CaptorConsumer>(instance, inputLine);
+            return std::make_unique<CaptorConsumer>(instance, inputLine, outputPath);
         }
 
         bool ParseArgs(const CompilerInstance &CI,
                        const std::vector<std::string> &args) override {
-            if (args.size() != 1) {
-                llvm::errs() << "Please provide an inputLine\n";
+            if (args.size() != 2) {
+                llvm::errs() << "Useage: <inputLine> <outputPath>\n";
                 return false;
             }
             inputLine = std::stoi(args[0]);
             llvm::errs() << "inputLine:" << inputLine << "\n";
+
+            outputPath = args[1];
+            llvm::errs() << outputPath << "\n";
+
             return true;
         }
 
